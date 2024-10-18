@@ -1,0 +1,10 @@
+#lang typed/racket
+;; a List is either
+;; - (cons value List), or
+;; - `()
+
+;; **cons is another name for Node
+
+(define lst (cons 10 (cons 20 (cons 30 `()))))
+
+  

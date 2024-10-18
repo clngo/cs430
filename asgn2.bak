@@ -1,0 +1,9 @@
+#lang typed/racket
+
+; Exercise 2.3.3.
+(define (total-profit [attendees : Real]) : Real
+  ; produces how much income produced
+  )
+
+; Test cases
+

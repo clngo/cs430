@@ -1,0 +1,5 @@
+#lang racket
+
+; takes a number and returns a function
+(define (curried-add a)
+  (lambda (b) (a + b)))

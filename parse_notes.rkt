@@ -1,0 +1,12 @@
+#lang typed/racket
+(require typed/rackunit)
+
+; 1. Data Definition
+(struct NumC ([n : Real]) #:transparent)
+(struct PlusC ([left : ExprC] [right : ExprC]) #:transparent)
+(struct MultC ([left : ExprC] [right : ExprC]) #:transparent)
+
+; 2. Purpose statement and header
+; Parse the given program into an AST
+(define (parse prog) : ExprC
+  x)
