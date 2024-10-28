@@ -384,6 +384,17 @@
                             ((x) => (+ x 3))
                             ((y) => (* y 2))))
               "10")
+(check-equal? (top-interp '(bind [one = {{f} => {{a} => {f a}}}]
+                                 ((one {{x} => {+ x 1}}) 1)))
+              "2")
+(check-equal? (top-interp '(bind [two = {{f} => {{a} => {f {f a}}}}]
+                                 ((two {{x} => {+ x 1}}) 1)))
+              "3")
+(check-equal? (top-interp '(bind [add = {{n1} => {{n2} => {{f} => {{a} => {{n1 f} {{n2 f} a}}}}}}]
+                                 ((((add {{f} => {{a} => {f a}}})
+                                    {{f} => {{a} => {f {f a}}}})
+                                   {{x} => {+ x 1}}) 1)))
+              "4")
 
 (check-exn (regexp (regexp-quote "AAQZ : user-error \"1\""))
            (lambda () (top-interp '(((x) => (error x)) 1))))
@@ -409,5 +420,4 @@
            (lambda () (top-interp '(((x y) => (/ x y)) 1 0))))
 (check-exn (regexp (regexp-quote "AAQZ : one argument was not a number"))
            (lambda () (top-interp '(((x y) => (<= x y)) 1 "1"))))
-
 
