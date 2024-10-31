@@ -118,7 +118,7 @@
     [(IfC x t e) (define boo (interp x env))
                  (match boo
                    [(BoolV bool) (cond [(equal? bool #t) (interp t env)]
-                                           [else (interp e env)])]
+                                       [else (interp e env)])]
                    [other (error 'interp "AAQZ : Given non-boolean type")])]
                              
     [(LamC p b) (CloV p b env)]
@@ -128,14 +128,8 @@
                   [(CloV p b e)
                    (cond
                      [(equal? (length p) (length val-lst)) (interp b (extend-helper p val-lst e))]
-                     [else (error 'interp "AAQZ : Wrong number of args")])]
-                  [(PrimV sym) (cond [(equal? (length val-lst) 2)
-                                      (interp-PrimV sym (first val-lst) (first (rest val-lst)))]
-                                     [(equal? (length val-lst) 1)
-                                      (match sym
-                                        ['error (error 'interp "AAQZ : user-error ~s" (serialize (first val-lst)))]
-                                        [other (error 'interp "AAQZ : Wrong number of args")])]
-                                     [else (error 'interp "AAQZ : Wrong number of args")])]
+                     [else (error 'interp "AAQZ : Invalid PrimV")])]
+                  [(PrimV sym) (interp-PrimV sym val-lst)]
                   [other (error 'interp "AAQZ : closure or primitive in function application")])]))
 
 ; Finds binding in env based given a symbol
@@ -155,26 +149,23 @@
     [('() '()) env]))
 
 ; helper for PrimV
-(define (interp-PrimV [sym : Symbol] [l : Value] [r : Value]) : Value
-  (match sym
-    ['+ (cond [(and (NumV? l) (NumV? r)) (NumV (+ (NumV-num l) (NumV-num r)))]
-              [else (error 'interp-PrimV "AAQZ : one argument was not a number")])]
-    ['- (cond [(and (NumV? l) (NumV? r)) (NumV (- (NumV-num l) (NumV-num r)))]
-              [else (error 'interp-PrimV "AAQZ : one argument was not a number")])]
-    ['* (cond [(and (NumV? l) (NumV? r)) (NumV (* (NumV-num l) (NumV-num r)))]
-              [else (error 'interp-PrimV "AAQZ : one argument was not a number")])]
-    ['/ (cond [(and (NumV? l) (NumV? r))
-               (cond [(zero? (NumV-num r)) (error 'interp-PrimV "AAQZ : Cannot divide by 0")]
-                     [else (NumV (/ (NumV-num l) (NumV-num r)))])]
-              [else (error 'interp-PrimV "AAQZ : one argument was not a number")])]
-    ['<= (cond [(and (NumV? l) (NumV? r)) (BoolV (<= (NumV-num l) (NumV-num r)))]
-               [else (error 'interp-PrimV "AAQZ : one argument was not a number")])]
+(define (interp-PrimV [sym : Symbol] [val-lst : (Listof Value)]) : Value
+  (match* (sym val-lst)
+    [('+ (list (NumV l) (NumV r))) (NumV (+ l r))]
+    [('- (list (NumV l) (NumV r))) (NumV (- l r))]
+    [('* (list (NumV l) (NumV r))) (NumV (* l r))]
+    [('/ (list (NumV l) (NumV r))) (cond
+                                     [(zero? r) (error 'interp-PrimV "AAQZ : Cannot divide by 0")]
+                                     [else (NumV (/ l r))])]
+    [('<= (list (NumV l) (NumV r))) (BoolV (<= l r))]
     ; Functions like eq?
     ; Neither l or r is a CloV or PrimV and 2 values are equal
-    ['equal? (cond [(and (and (not (CloV? l)) (not (PrimV? l))) (and (not (CloV? r)) (not (PrimV? r))))
-                    (BoolV (equal? l r))]
-                   [else (BoolV #f)])]
-    [other (error 'interp-PrimV "AAQZ : Wrong number of args")]))
+    [('equal? (list l r))
+     (cond [(and (and (not (CloV? l)) (not (PrimV? l))) (and (not (CloV? r)) (not (PrimV? r))))
+            (BoolV (equal? l r))]
+           [else (BoolV #f)])]
+    [('error (list val)) (error 'interp "AAQZ : user-error ~s" (serialize val))]
+    [(_ _) (error 'interp-PrimV "AAQZ : Invalid PrimV")]))
 
 
 ; Combines parsing and evaluation
@@ -204,7 +195,7 @@
 (check-equal? (parse '({x} => x)) (LamC (list 'x) (IdC 'x)))
 (check-exn (regexp (regexp-quote "AAQZ : Duplicate Arguments in Function (x x)"))
            (lambda () (parse '({x x} => (+ x 1)))))
-#; (check-equal? (parse '({x y} => x)) (LamC (list 'x 'y) (IdC 'x)))
+(check-equal? (parse '({x y} => x)) (LamC (list 'x 'y) (IdC 'x)))
 (check-equal? (parse '{{x} => +}) (LamC (list 'x) (IdC '+)))
 (check-equal? (parse '{{} => 0}) (LamC '() (NumC 0)))
 (check-equal? (parse '{{+} => 0}) (LamC (list '+) (NumC 0))) ; valid in racket and AAQZ4???
@@ -228,8 +219,8 @@
 ;extract symbols
 (check-equal? (extract-symbols '() '()) '())
 (check-equal? 
-  (extract-symbols '((x = (+ 1 2)) (y = (* 3 4))) '()) 
-  '(x y))
+ (extract-symbols '((x = (+ 1 2)) (y = (* 3 4))) '()) 
+ '(x y))
 (check-equal? (extract-symbols '((x = 2) (y = 3)) '()) 
               '(x y))
 (check-equal? (extract-symbols '((x = 42)) '()) 
@@ -242,8 +233,8 @@
 ; extract-expressions
 (check-equal? (extract-expressions '() '()) '())
 (check-equal? 
-  (extract-expressions '((x = (+ 1 2)) (y = (* 3 4))) '()) 
-  (list (AppC (IdC '+) (list (NumC 1) (NumC 2))) (AppC (IdC '*) (list (NumC 3) (NumC 4)))))
+ (extract-expressions '((x = (+ 1 2)) (y = (* 3 4))) '()) 
+ (list (AppC (IdC '+) (list (NumC 1) (NumC 2))) (AppC (IdC '*) (list (NumC 3) (NumC 4)))))
 (check-equal? (extract-expressions '((x = 2) (y = 3)) '()) 
               (list (NumC 2) (NumC 3)))
 (check-exn (regexp (regexp-quote "AAQZ : Invalid binding clause structure: (bind this is wrong not valid)"))
@@ -273,16 +264,16 @@
 (check-exn (regexp (regexp-quote "AAQZ : name not found: 'x"))
            (lambda () (interp (IdC 'x) top-env)))
 (check-equal? (interp (IfC (AppC (IdC '<=) (list (NumC 1) (NumC 2))) (NumC 3) (NumC 0)) top-env)
-                      (NumV 3))
+              (NumV 3))
 (check-equal? (interp (IfC (AppC (IdC '<=) (list (NumC 2) (NumC 1))) (NumC 3) (NumC 0)) top-env)
-                      (NumV 0))
+              (NumV 0))
 (check-equal? (interp (IfC (AppC (IdC 'equal?) (list (NumC 2) (NumC 1))) (IdC 'true) (IdC 'false)) top-env)
-                      (BoolV #f))
+              (BoolV #f))
 (check-equal? (interp (IfC (AppC (IdC 'equal?) (list (NumC 2) (NumC 2))) (IdC 'true) (IdC 'false)) top-env)
-                      (BoolV #t))
+              (BoolV #t))
 (check-equal? (interp (IfC (AppC (IdC 'equal?) (list (AppC (IdC '+) (list (NumC 1) (NumC 2))) (NumC 2)))
                            (IdC 'true) (StrC "False PrimV")) top-env)
-                      (StrV "False PrimV"))
+              (StrV "False PrimV"))
 (check-exn (regexp (regexp-quote "AAQZ : Given non-boolean type"))
            (lambda () (interp (IfC (StrC "string") (NumC 3) (NumC 0)) top-env)))
 (check-equal? (interp (LamC (list 'x) (NumC 1)) top-env) (CloV (list 'x) (NumC 1) top-env))
@@ -305,41 +296,43 @@
                                   (AppC (IdC '+) (list (IdC 'x) (NumC 1))))
                             (list (NumC 7))) top-env)
               (NumV 8))
-(check-exn (regexp (regexp-quote "AAQZ : Wrong number of args"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (interp (AppC (LamC (list 'x) (NumC 1)) (list (NumC 1) (NumC 2))) top-env)))
 
 #; (check-equal? (interp (AppC (LamC (list 'f 'g)
-                                  (LamC (list 'x)
-                                        (AppC (IdC 'f)
-                                              (list (AppC (IdC 'g) (list (IdC 'x)))))))
-                            (list (LamC (list 'f)
-                                        (AppC (IdC '+) (list (IdC 'y) (NumC 1))))
-                                  (LamC (list 'z) (AppC (IdC '+) (list (IdC 'z) (NumC 2)))))) top-env)
-              (NumV 4))  ; f(g(x)) ; g(x) = x + 2; f(x) = x + 1
+                                     (LamC (list 'x)
+                                           (AppC (IdC 'f)
+                                                 (list (AppC (IdC 'g) (list (IdC 'x)))))))
+                               (list (LamC (list 'f)
+                                           (AppC (IdC '+) (list (IdC 'y) (NumC 1))))
+                                     (LamC (list 'z) (AppC (IdC '+) (list (IdC 'z) (NumC 2)))))) top-env)
+                 (NumV 4))  ; f(g(x)) ; g(x) = x + 2; f(x) = x + 1
 (check-exn (regexp (regexp-quote "AAQZ : user-error \"1\""))
            (lambda () (interp (AppC (IdC 'error) (list (NumC 1))) top-env)))
-(check-exn (regexp (regexp-quote "AAQZ : Wrong number of args"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (interp (AppC (IdC '+) (list (NumC 1))) top-env)))
-(check-exn (regexp (regexp-quote "AAQZ : Wrong number of args"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (interp (AppC (IdC 'error) (list (NumC 1) (NumC 2))) top-env)))
-(check-exn (regexp (regexp-quote "AAQZ : Wrong number of args"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (interp (AppC (IdC 'error) (list (NumC 1) (NumC 2) (NumC 3))) top-env)))
 
 ; interp-PrimV
-(check-equal? (interp-PrimV '+ (NumV 1) (NumV 0)) (NumV 1))
-(check-equal? (interp-PrimV '- (NumV 5) (NumV 3)) (NumV 2))
-(check-equal? (interp-PrimV '* (NumV 5) (NumV 3)) (NumV 15))
-(check-equal? (interp-PrimV '/ (NumV 15) (NumV 3)) (NumV 5))
+(check-equal? (interp-PrimV '+ (list (NumV 1) (NumV 0))) (NumV 1))
+(check-equal? (interp-PrimV '- (list (NumV 5) (NumV 3))) (NumV 2))
+(check-equal? (interp-PrimV '* (list (NumV 5) (NumV 3))) (NumV 15))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
+           (lambda () (interp-PrimV '* (list (NumV 5)))))
+(check-equal? (interp-PrimV '/ (list (NumV 15) (NumV 3))) (NumV 5))
 (check-exn (regexp (regexp-quote "AAQZ : Cannot divide by 0"))
-           (lambda () (interp-PrimV '/ (NumV 8329) (NumV 0))))
-(check-equal? (interp-PrimV '<= (NumV 5) (NumV 3)) (BoolV #f))
-(check-equal? (interp-PrimV '<= (NumV 3) (NumV 5)) (BoolV #t))
-(check-equal? (interp-PrimV 'equal? (NumV 3) (NumV 5)) (BoolV #f))
-(check-equal? (interp-PrimV 'equal? (NumV 5) (NumV 5)) (BoolV #t))
-(check-equal? (interp-PrimV 'equal? (StrV "test1") (StrV "test2")) (BoolV #f))
-(check-equal? (interp-PrimV 'equal? (StrV "test1") (StrV "test1")) (BoolV #t))
-(check-equal? (interp-PrimV 'equal? (PrimV '+) (StrV "test1")) (BoolV #f))
-(check-equal? (interp-PrimV 'equal? (CloV '() (NumC 1) top-env) (NumV 1)) (BoolV #f))
+           (lambda () (interp-PrimV '/ (list (NumV 8329) (NumV 0)))))
+(check-equal? (interp-PrimV '<= (list (NumV 5) (NumV 3))) (BoolV #f))
+(check-equal? (interp-PrimV '<= (list (NumV 3) (NumV 5))) (BoolV #t))
+(check-equal? (interp-PrimV 'equal? (list (NumV 3) (NumV 5))) (BoolV #f))
+(check-equal? (interp-PrimV 'equal? (list (NumV 5) (NumV 5))) (BoolV #t))
+(check-equal? (interp-PrimV 'equal? (list (StrV "test1") (StrV "test2"))) (BoolV #f))
+(check-equal? (interp-PrimV 'equal? (list (StrV "test1") (StrV "test1"))) (BoolV #t))
+(check-equal? (interp-PrimV 'equal? (list (PrimV '+) (StrV "test1"))) (BoolV #f))
+(check-equal? (interp-PrimV 'equal? (list (CloV '() (NumC 1) top-env) (NumV 1))) (BoolV #f))
 
 
 ; lookup
@@ -408,16 +401,19 @@
                                     (((y) => (equal? y 5)) 4)))))
 (check-exn (regexp (regexp-quote "AAQZ : closure or primitive in function application"))
            (lambda () (top-interp '(1 2 3 4))))
-(check-exn (regexp (regexp-quote "AAQZ : one argument was not a number"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (top-interp '(((x y) => (+ x y)) 1 "1"))))
-(check-exn (regexp (regexp-quote "AAQZ : one argument was not a number"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (top-interp '(((x y) => (- x y)) 1 "1"))))
-(check-exn (regexp (regexp-quote "AAQZ : one argument was not a number"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (top-interp '(((x y) => (* x y)) 1 "1"))))
-(check-exn (regexp (regexp-quote "AAQZ : one argument was not a number"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (top-interp '(((x y) => (/ x y)) 1 "1"))))
 (check-exn (regexp (regexp-quote "AAQZ : Cannot divide by 0"))
            (lambda () (top-interp '(((x y) => (/ x y)) 1 0))))
-(check-exn (regexp (regexp-quote "AAQZ : one argument was not a number"))
+(check-exn (regexp (regexp-quote "AAQZ : Invalid PrimV"))
            (lambda () (top-interp '(((x y) => (<= x y)) 1 "1"))))
 
+
+
+(filter (lambda ([s : String]) : Boolean (> (string-length s) 4)) '("hello" "world" "the" "a"))
