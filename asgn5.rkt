@@ -2,17 +2,15 @@
 
 
 #|
-Everyting Works! Play Blackjack
+Everything Works! Play Blackjack
 
 
 Fun Codes:
 Blackjack: 900
-Hit for 21: 3
-Get a 20: 7
-Testing Tie (h h s): 88 (Back to the Future!)
+Hit for a 21 (h s): 5
+Get a 20, but dealer gets Blackjack: 7
+Testing Tie (h s): 34 
 Always losing: 4 (bad omen too)
-Same Card D2 (CHEATER!!!): 3000
-Sorry I couldn't fix some cards being used twice... I think it's still fun though
 |#
 
 (require typed/rackunit)
@@ -211,95 +209,6 @@ Sorry I couldn't fix some cards being used twice... I think it's still fun thoug
 ; Combines parsing and evaluation
 (define (top-interp [s : Sexp]) : String
   (serialize (interp (parse s) top-env)))
-
-
-; ----------------------------------------------------------------------------------
-; ----------------------------------- TEST CASES -----------------------------------
-; ----------------------------------------------------------------------------------
-
-; interp
-(check-equal? (interp (IdC 'error) top-env) (PrimV 'error))
-(check-equal? (interp (IdC 'println) top-env) (PrimV 'println))
-(check-equal? (interp (IdC 'seq) top-env) (PrimV 'seq))
-(check-equal? (interp (IdC 'read-num) top-env) (PrimV 'read-num))
-(check-equal? (interp (IdC 'read-str) top-env) (PrimV 'read-str))
-
-
-; top-interp
-#; (check-exn (regexp (regexp-quote "AAQZ : Input not a number"))
-              (lambda () (top-interp '{read-num})))
-(check-equal? (top-interp '(bind [mod = {{self num den} => {if {<= num den}
-                                                               {if {equal? num den} 0 num}
-                                                               {self self {- num den} den}}}]
-                                 (mod mod 19 3))) "1")
-(check-equal? (top-interp '(bind [mod = {{self num den} => {if {<= num den}
-                                                               {if {equal? num den} 0 num}
-                                                               {self self {- num den} den}}}]
-                                 (mod mod 19 19))) "0")
-(check-equal? (top-interp '(bind [mod = {{self num den} => {if {<= num den}
-                                                               {if {equal? num den} 0 num}
-                                                               {self self {- num den} den}}}]
-                                 (mod mod 5 2))) "1")
-(check-equal? (top-interp '(bind [mod = {{self num den} => {if {<= num den}
-                                                               {if {equal? num den} 0 num}
-                                                               {self self {- num den} den}}}]
-                                 (mod mod 21 6))) "3")
-
-(check-equal? (top-interp '{bind
-                            [get-int =
-                                     {{min max}
-                                      =>
-                                      (bind [mod = {{self num den} => {if {<= num den}
-                                                                          {if {equal? num den} 0 num}
-                                                                          {self self {- num den} den}}}]
-                                            (mod mod 267 {+ {- max min} 1}))}]
-                            (get-int 0 51)}) "7")
-(check-equal? (top-interp '{bind
-                            [get-int =
-                                     {{min max}
-                                      =>
-                                      (bind [mod = {{self num den} => {if {<= num den}
-                                                                          {if {equal? num den} 0 num}
-                                                                          {self self {- num den} den}}}]
-                                            (mod mod 139 {+ {- max min} 1}))}]
-                            (get-int 0 51)}) "35")
-(check-equal? (top-interp '{bind
-                            [get-int =
-                                     {{min max}
-                                      =>
-                                      (bind [mod = {{self num den} => {if {<= num den}
-                                                                          {if {equal? num den} 0 num}
-                                                                          {self self {- num den} den}}}]
-                                            (mod mod 107 {+ {- max min} 1}))}]
-                            (get-int 0 51)}) "3")
-
-#; (top-interp '{bind
-                 [empty = 15]
-                 {bind
-                  [empty? = {(x) => {equal? x empty}}]
-                  [cons = {(f r)
-                           =>
-                           {(key)
-                            =>
-                            {if {equal? key 0}
-                                f
-                                r}}}]
-                  [first = {(pair) => {pair 0}}]
-                  [rest =  {(pair) => {pair 1}}]
-                  #; (first (cons 1 empty))
-                  (first (rest (first (cons (cons 1 (cons 2 empty)) empty))))
-                  #; {bind
-                      [print-lst = {(self l)
-                                    =>
-                                    {if {empty? l}
-                                        empty
-                                        {bind [elem = (first l)]
-                                              {seq {println elem}
-                                                   {self self {rest l}}}}}}]
-                      [my-list = {cons "3"
-                                       {cons "24"
-                                             {cons "8" empty}}}]
-                      {println {++ "Printing my-list: " {print-lst print-lst my-list}}}}}})
 
 (define example-program 
   '(seq
@@ -592,7 +501,7 @@ Sorry I couldn't fix some cards being used twice... I think it's still fun thoug
                                                     {deal-card deal-card
                                                                player
                                                                deck
-                                                               cards}
+                                                               {- cards 1}}
                                                     dealer
                                                     {- cards 1}
                                                     0
@@ -601,7 +510,7 @@ Sorry I couldn't fix some cards being used twice... I think it's still fun thoug
                                              {self self deck
                                                    player
                                                    dealer
-                                                   cards
+                                                   {- cards 1}
                                                    1
                                                    rng}}}}
                                           {println
@@ -808,3 +717,92 @@ Sorry I couldn't fix some cards being used twice... I think it's still fun thoug
                            new-seed))})}})}))
 
 #; (top-interp example-program)
+
+; ----------------------------------------------------------------------------------
+; ----------------------------------- TEST CASES -----------------------------------
+; ----------------------------------------------------------------------------------
+
+; interp
+(check-equal? (interp (IdC 'error) top-env) (PrimV 'error))
+(check-equal? (interp (IdC 'println) top-env) (PrimV 'println))
+(check-equal? (interp (IdC 'seq) top-env) (PrimV 'seq))
+(check-equal? (interp (IdC 'read-num) top-env) (PrimV 'read-num))
+(check-equal? (interp (IdC 'read-str) top-env) (PrimV 'read-str))
+
+
+; top-interp
+#; (check-exn (regexp (regexp-quote "AAQZ : Input not a number"))
+              (lambda () (top-interp '{read-num})))
+(check-equal? (top-interp '(bind [mod = {{self num den} => {if {<= num den}
+                                                               {if {equal? num den} 0 num}
+                                                               {self self {- num den} den}}}]
+                                 (mod mod 19 3))) "1")
+(check-equal? (top-interp '(bind [mod = {{self num den} => {if {<= num den}
+                                                               {if {equal? num den} 0 num}
+                                                               {self self {- num den} den}}}]
+                                 (mod mod 19 19))) "0")
+(check-equal? (top-interp '(bind [mod = {{self num den} => {if {<= num den}
+                                                               {if {equal? num den} 0 num}
+                                                               {self self {- num den} den}}}]
+                                 (mod mod 5 2))) "1")
+(check-equal? (top-interp '(bind [mod = {{self num den} => {if {<= num den}
+                                                               {if {equal? num den} 0 num}
+                                                               {self self {- num den} den}}}]
+                                 (mod mod 21 6))) "3")
+
+(check-equal? (top-interp '{bind
+                            [get-int =
+                                     {{min max}
+                                      =>
+                                      (bind [mod = {{self num den} => {if {<= num den}
+                                                                          {if {equal? num den} 0 num}
+                                                                          {self self {- num den} den}}}]
+                                            (mod mod 267 {+ {- max min} 1}))}]
+                            (get-int 0 51)}) "7")
+(check-equal? (top-interp '{bind
+                            [get-int =
+                                     {{min max}
+                                      =>
+                                      (bind [mod = {{self num den} => {if {<= num den}
+                                                                          {if {equal? num den} 0 num}
+                                                                          {self self {- num den} den}}}]
+                                            (mod mod 139 {+ {- max min} 1}))}]
+                            (get-int 0 51)}) "35")
+(check-equal? (top-interp '{bind
+                            [get-int =
+                                     {{min max}
+                                      =>
+                                      (bind [mod = {{self num den} => {if {<= num den}
+                                                                          {if {equal? num den} 0 num}
+                                                                          {self self {- num den} den}}}]
+                                            (mod mod 107 {+ {- max min} 1}))}]
+                            (get-int 0 51)}) "3")
+
+#; (top-interp '{bind
+                 [empty = 15]
+                 {bind
+                  [empty? = {(x) => {equal? x empty}}]
+                  [cons = {(f r)
+                           =>
+                           {(key)
+                            =>
+                            {if {equal? key 0}
+                                f
+                                r}}}]
+                  [first = {(pair) => {pair 0}}]
+                  [rest =  {(pair) => {pair 1}}]
+                  #; (first (cons 1 empty))
+                  (first (rest (first (cons (cons 1 (cons 2 empty)) empty))))
+                  #; {bind
+                      [print-lst = {(self l)
+                                    =>
+                                    {if {empty? l}
+                                        empty
+                                        {bind [elem = (first l)]
+                                              {seq {println elem}
+                                                   {self self {rest l}}}}}}]
+                      [my-list = {cons "3"
+                                       {cons "24"
+                                             {cons "8" empty}}}]
+                      {println {++ "Printing my-list: " {print-lst print-lst my-list}}}}}})
+
