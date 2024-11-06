@@ -6,11 +6,12 @@ Everything Works! Play Blackjack
 
 
 Fun Codes:
-Blackjack: 900
-Hit for a 21 (h s): 5
+Blackjack: 900 (if you hit again, u still get 21)
+Hit for a 21 (h s): 5, 9
 Get a 20, but dealer gets Blackjack: 7
-Testing Tie (h s): 34 
-Always losing: 4 (bad omen too)
+Testing Tie (h s): 34, 832
+Always losing: 4 (bad omen too), 43
+Tie at 21: 1111
 |#
 
 (require typed/rackunit)
@@ -715,7 +716,6 @@ Always losing: 4 (bad omen too)
                            52 
                            0
                            new-seed))})}})}))
-
 #; (top-interp example-program)
 
 ; ----------------------------------------------------------------------------------
