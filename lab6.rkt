@@ -46,16 +46,10 @@
     [(LamC (list (? symbol? lst) ...) body) (list (cast lst (Listof Symbol)) '=> (unparse body))]
 
     ; AppC
-    [(AppC fun (list param ...)) (cons (unparse fun) (unparse-AppC param))]
+    [(AppC fun (list param ...)) (cons (unparse fun) (map unparse param))]
 
     ; IdC
     [(IdC sym) sym]))
-
-; Unparse a list of params for AppC
-(define (unparse-AppC [param : (Listof ExprC)]) : Sexp
-  (match param
-    [(cons f r) (cons (unparse f) (unparse-AppC r))]
-    ['() '()]))
 
 
 ; Generates a random term, prints CST, and returns the term
