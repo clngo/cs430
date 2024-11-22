@@ -536,6 +536,11 @@
 (check-exn (regexp (regexp-quote "AAQZ : type not found: 'test"))
            (lambda () (lookup-type 'test base-tenv)))
 
+; funt-check
+(check-equal? (funt-check (list (NumT)) (list (NumT))) #t)
+(check-exn (regexp (regexp-quote "AAQZ : Wrong number of args"))
+           (lambda () (funt-check (list (NumT)) '())))
+
 ; extract-types
 (check-equal? (extract-types '() '()) '())
 (check-equal? 
@@ -573,10 +578,6 @@
 (check-exn (regexp (regexp-quote "AAQZ : Invalid param syntax"))
            (lambda () (parse-param-types '([x = wrong]))))
 
-; funt-check
-(check-equal? (funt-check (list (NumT)) (list (NumT))) #t)
-(check-exn (regexp (regexp-quote "AAQZ : Wrong number of args"))
-           (lambda () (funt-check (list (NumT)) '())))
 
 ; ----------------------------------- TEST STORE FUNCTIONS -----------------------------------
 
